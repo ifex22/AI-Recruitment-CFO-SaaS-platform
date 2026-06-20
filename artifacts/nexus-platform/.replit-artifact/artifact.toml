@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Nexus AI Platform"
+version = "1.0.0"
+id = "artifacts/nexus-platform"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23350
+
+[services.development]
+run = "pnpm --filter @workspace/nexus-platform run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/nexus-platform", "run", "build" ]
+publicDir = "artifacts/nexus-platform/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23350"
+BASE_PATH = "/"

@@ -1,0 +1,2 @@
+- [Supabase table mapping](supabase-table-mapping.md) — maps 7 existing tables to platform domains; cannot create new tables (REST API only)
+- [Demo auth pattern](demo-auth.md) — demo-token-* bypasses Supabase; real auth uses brands table for org config
