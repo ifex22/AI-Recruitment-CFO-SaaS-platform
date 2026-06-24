@@ -2,6 +2,19 @@ import { Router, type IRouter } from "express";
 import { supabase } from "../lib/supabase";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import crypto from "crypto";
+import { Resend } from "resend";
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const FROM_EMAIL = process.env.FROM_EMAIL ?? "noreply@nexusai.app";
+
+async function sendEmail(to: string, subject: string, html: string) {
+  if (!resend) return;
+  try {
+    await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
+  } catch {
+    // email errors are non-fatal
+  }
+}
 
 const router: IRouter = Router();
 
@@ -89,6 +102,17 @@ router.post("/public/apply", async (req, res) => {
   }).select().single();
 
   if (error) { res.status(500).json({ error: error.message }); return; }
+
+  await sendEmail(
+    email as string,
+    `Application received — ${job_title ?? "your role"}`,
+    `<div style="font-family:sans-serif;max-width:520px;margin:auto;color:#1e293b">
+      <h2 style="color:#2563eb">Thanks for applying, ${(full_name as string).split(" ")[0]}!</h2>
+      <p>We received your application for <strong>${job_title ?? "the position"}</strong> at Nexus AI.</p>
+      <p>Next step: complete your <strong>AI interview</strong> — it only takes a few minutes and you'll get scored instantly. No scheduling needed.</p>
+      <p style="margin-top:24px;font-size:12px;color:#94a3b8">This email was sent by Nexus AI Recruitment Platform. If you did not apply, please ignore this message.</p>
+    </div>`
+  );
 
   res.status(201).json({
     candidate_id: data.id,
@@ -260,6 +284,33 @@ Respond ONLY with valid JSON:
     address: JSON.stringify(updatedExtra),
     updated_at: new Date().toISOString(),
   }).eq("id", candidate_id);
+
+  const recommendationLabel: Record<string, string> = {
+    strong_hire: "Strong Hire ✅",
+    hire: "Hire ✅",
+    maybe: "Under Review 🔄",
+    no_hire: "Not Selected ❌",
+  };
+  const recLabel = recommendationLabel[scoreResult.recommendation as string] ?? "Under Review 🔄";
+  const strengths = (scoreResult.strengths as string[] ?? []).map(s => `<li>${s}</li>`).join("");
+
+  await sendEmail(
+    candidate.email as string,
+    `Your AI interview results — ${jobTitle}`,
+    `<div style="font-family:sans-serif;max-width:520px;margin:auto;color:#1e293b">
+      <h2 style="color:#2563eb">Interview Complete!</h2>
+      <p>Hi ${(candidate.name as string ?? "").split(" ")[0]}, here are your results for <strong>${jobTitle}</strong>:</p>
+      <div style="background:#f1f5f9;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
+        <div style="font-size:48px;font-weight:900;color:#2563eb">${overallScore}</div>
+        <div style="font-size:13px;color:#64748b;margin-top:4px">Overall Score / 100</div>
+        <div style="margin-top:12px;font-size:16px;font-weight:600">${recLabel}</div>
+      </div>
+      <p><strong>Summary:</strong> ${scoreResult.summary ?? ""}</p>
+      ${strengths ? `<p><strong>Strengths:</strong></p><ul>${strengths}</ul>` : ""}
+      <p>Our recruitment team will be in touch shortly. Thank you for your time!</p>
+      <p style="margin-top:24px;font-size:12px;color:#94a3b8">Nexus AI Recruitment Platform</p>
+    </div>`
+  );
 
   res.json({
     score: overallScore,
