@@ -31,7 +31,8 @@ async function sendSms(to: string, body: string) {
 
 async function getOpenAI() {
   const cfg = await loadCommConfig();
-  if (cfg.openai_api_key) {
+  // Only use stored key if it looks real (sk- prefix, at least 20 chars)
+  if (cfg.openai_api_key && cfg.openai_api_key.startsWith("sk-") && cfg.openai_api_key.length > 20) {
     return new OpenAI({ apiKey: cfg.openai_api_key });
   }
   return replitOpenai;
@@ -235,8 +236,8 @@ ${isLastQuestion ? "- This is the final response. Thank the candidate, tell them
 
   const aiClient = await getOpenAI();
   const completion = await aiClient.chat.completions.create({
-    model: "gpt-5-mini",
-    max_completion_tokens: 512,
+    model: "gpt-4o-mini",
+    max_tokens: 512,
     messages: chatMessages,
   });
 
@@ -316,8 +317,8 @@ Respond ONLY with valid JSON:
 
   const aiClient2 = await getOpenAI();
   const scoreCompletion = await aiClient2.chat.completions.create({
-    model: "gpt-5-mini",
-    max_completion_tokens: 512,
+    model: "gpt-4o-mini",
+    max_tokens: 512,
     messages: [{ role: "user", content: scorePrompt }],
   });
 

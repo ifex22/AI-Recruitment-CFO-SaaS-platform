@@ -411,7 +411,7 @@ export default function AdminPage() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
                       <Send className="w-4 h-4 text-primary" /> Admin &amp; Recruiter Notifications
-                      <StatusBadge ok={!!(status?.notifications.admin_email_set || status?.notifications.admin_phone_set)} />
+                      <StatusBadge ok={!!(status?.notifications?.admin_email_set || status?.notifications?.admin_phone_set)} />
                     </CardTitle>
                     <p className="text-xs text-muted-foreground">Where to send alerts when a candidate applies or completes an AI interview. The recruiter/admin receives a full report with AI score and recommendation.</p>
                   </CardHeader>
