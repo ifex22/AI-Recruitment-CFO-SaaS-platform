@@ -162,4 +162,56 @@ router.get("/admin/audit-logs", async (req, res) => {
   res.json(logs);
 });
 
+// ── Communications ─────────────────────────────────────────────────────────
+
+router.get("/admin/communications", requireRole("admin"), async (_req, res) => {
+  res.json({
+    email: {
+      configured: !!process.env.RESEND_API_KEY,
+      from: process.env.FROM_EMAIL ?? "noreply@nexusai.app",
+      provider: "Resend",
+    },
+    sms: {
+      configured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM),
+      from: process.env.TWILIO_FROM ?? "",
+      provider: "Twilio",
+    },
+  });
+});
+
+router.post("/admin/communications/test-email", requireRole("admin"), async (req, res) => {
+  if (!process.env.RESEND_API_KEY) {
+    res.status(400).json({ error: "RESEND_API_KEY secret not configured. Add it in Replit Secrets." }); return;
+  }
+  const { to } = req.body as { to?: string };
+  if (!to) { res.status(400).json({ error: "to email required" }); return; }
+  const { Resend } = await import("resend");
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const { error } = await resend.emails.send({
+    from: process.env.FROM_EMAIL ?? "noreply@nexusai.app",
+    to,
+    subject: "Nexus AI — Email Test",
+    html: `<div style="font-family:sans-serif;padding:24px"><h2 style="color:#2563eb">Email is working!</h2><p>This is a test email from your Nexus AI Recruitment Platform.</p></div>`,
+  });
+  if (error) { res.status(500).json({ error: (error as { message?: string }).message ?? "Send failed" }); return; }
+  res.json({ ok: true, message: `Test email sent to ${to}` });
+});
+
+router.post("/admin/communications/test-sms", requireRole("admin"), async (req, res) => {
+  if (!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM)) {
+    res.status(400).json({ error: "Twilio secrets not configured. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM in Replit Secrets." }); return;
+  }
+  const { to } = req.body as { to?: string };
+  if (!to) { res.status(400).json({ error: "to phone number required" }); return; }
+  const twilio = (await import("twilio")).default;
+  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  try {
+    await client.messages.create({ from: process.env.TWILIO_FROM, to, body: "Nexus AI test SMS — your notifications are working!" });
+    res.json({ ok: true, message: `Test SMS sent to ${to}` });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "SMS send failed";
+    res.status(500).json({ error: msg });
+  }
+});
+
 export default router;

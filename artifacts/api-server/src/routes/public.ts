@@ -16,6 +16,17 @@ async function sendEmail(to: string, subject: string, html: string) {
   }
 }
 
+async function sendSms(to: string, body: string) {
+  if (!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM)) return;
+  try {
+    const twilio = (await import("twilio")).default;
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await client.messages.create({ from: process.env.TWILIO_FROM, to, body });
+  } catch {
+    // sms errors are non-fatal
+  }
+}
+
 const router: IRouter = Router();
 
 function mapJob(j: Record<string, unknown>) {
@@ -107,6 +118,13 @@ router.post("/public/apply", async (req, res) => {
   }).select().single();
 
   if (error) { res.status(500).json({ error: error.message }); return; }
+
+  if (phone) {
+    await sendSms(
+      phone as string,
+      `Hi ${(full_name as string).split(" ")[0]}! Your application for ${job_title ?? "the role"} at Nexus AI was received. Complete your AI interview to get scored instantly: reply or visit the portal.`
+    );
+  }
 
   await sendEmail(
     email as string,
@@ -298,6 +316,14 @@ Respond ONLY with valid JSON:
   };
   const recLabel = recommendationLabel[scoreResult.recommendation as string] ?? "Under Review 🔄";
   const strengths = (scoreResult.strengths as string[] ?? []).map(s => `<li>${s}</li>`).join("");
+
+  if (candidate.phone) {
+    const scoreEmoji = overallScore >= 75 ? "🟢" : overallScore >= 50 ? "🟡" : "🔴";
+    await sendSms(
+      candidate.phone as string,
+      `${scoreEmoji} Hi ${(candidate.name as string ?? "").split(" ")[0]}! Your AI interview for ${jobTitle} is complete. Score: ${overallScore}/100. Our team will be in touch soon. – Nexus AI`
+    );
+  }
 
   await sendEmail(
     candidate.email as string,

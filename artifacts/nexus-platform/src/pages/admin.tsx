@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useListUsers, useCreateUser, useUpdateUser, useDeleteUser, useGetOrganization, useUpdateOrganization, useListAuditLogs, getListUsersQueryKey, getGetOrganizationQueryKey, getListAuditLogsQueryKey } from "@workspace/api-client-react";
 import type { UserInput } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, Edit2, Shield, History, Bot } from "lucide-react";
+import { Plus, Trash2, Edit2, Shield, History, Bot, Mail, MessageSquare, CheckCircle2, XCircle, Send } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -49,9 +49,26 @@ type PlatformUser = { id: string; email: string; full_name: string; role: string
 type OrgData = { name?: string; industry?: string; size?: string; headquarters?: string; currency?: string; fiscal_year_start?: string; hiring_policy?: string };
 type AuditLog = { id: string; action: string; entity_type: string; user_name: string; details?: string; created_at: string };
 
+type CommConfig = { email: { configured: boolean; from: string; provider: string }; sms: { configured: boolean; from: string; provider: string } };
+
+function useCommConfig(token: string) {
+  const [data, setData] = useState<CommConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetch("/api/admin/communications", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(setData).catch(() => {}).finally(() => setLoading(false));
+  }, [token]);
+  return { data, loading };
+}
+
 export default function AdminPage() {
   const [userOpen, setUserOpen] = useState(false);
   const [editUser, setEditUser] = useState<PlatformUser | null>(null);
+  const [testEmail, setTestEmail] = useState("");
+  const [testPhone, setTestPhone] = useState("");
+  const [commLoading, setCommLoading] = useState<"email" | "sms" | null>(null);
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") ?? "" : "";
+  const commConfig = useCommConfig(token);
   const qc = useQueryClient();
   const { toast } = useToast();
 
@@ -143,6 +160,7 @@ export default function AdminPage() {
         <TabsList>
           <TabsTrigger value="users"><Shield className="w-3.5 h-3.5 mr-1.5" />Users</TabsTrigger>
           <TabsTrigger value="org">Organization</TabsTrigger>
+          <TabsTrigger value="comms"><Mail className="w-3.5 h-3.5 mr-1.5" />Communications</TabsTrigger>
           <TabsTrigger value="audit"><History className="w-3.5 h-3.5 mr-1.5" />Audit Logs</TabsTrigger>
         </TabsList>
 
@@ -243,6 +261,112 @@ export default function AdminPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="comms" className="mt-4 space-y-4">
+          {commConfig.loading ? <Skeleton className="h-64" /> : (
+            <div className="grid gap-4">
+              {/* Email card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-primary" /> Email Notifications
+                    {commConfig.data?.email.configured
+                      ? <span className="flex items-center gap-1 text-xs text-green-600 font-normal"><CheckCircle2 className="w-3.5 h-3.5" /> Active</span>
+                      : <span className="flex items-center gap-1 text-xs text-amber-600 font-normal"><XCircle className="w-3.5 h-3.5" /> Not configured</span>}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><p className="text-muted-foreground text-xs mb-1">Provider</p><p className="font-medium">{commConfig.data?.email.provider}</p></div>
+                    <div><p className="text-muted-foreground text-xs mb-1">From address</p><p className="font-medium">{commConfig.data?.email.from}</p></div>
+                  </div>
+                  {!commConfig.data?.email.configured && (
+                    <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                      <p className="font-semibold">To enable email sending:</p>
+                      <ol className="list-decimal list-inside space-y-0.5">
+                        <li>Sign up free at <strong>resend.com</strong></li>
+                        <li>Copy your API key</li>
+                        <li>Add secret <strong>RESEND_API_KEY</strong> in Replit Secrets</li>
+                        <li>Optionally add <strong>FROM_EMAIL</strong> with your verified sender address</li>
+                      </ol>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Input placeholder="Send test to: you@email.com" value={testEmail} onChange={e => setTestEmail(e.target.value)} className="flex-1" />
+                    <Button
+                      size="sm"
+                      disabled={!commConfig.data?.email.configured || commLoading === "email" || !testEmail}
+                      onClick={async () => {
+                        setCommLoading("email");
+                        try {
+                          const r = await fetch("/api/admin/communications/test-email", {
+                            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ to: testEmail }),
+                          });
+                          const d = await r.json() as { ok?: boolean; error?: string };
+                          toast({ title: d.ok ? "Test email sent!" : "Failed", description: d.error ?? d.ok?.toString(), variant: d.ok ? "default" : "destructive" });
+                        } finally { setCommLoading(null); }
+                      }}
+                    >
+                      <Send className="w-3.5 h-3.5 mr-1.5" />{commLoading === "email" ? "Sending…" : "Test"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Emails are automatically sent when a candidate applies and when their AI interview is scored.</p>
+                </CardContent>
+              </Card>
+
+              {/* SMS card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-primary" /> SMS Notifications
+                    {commConfig.data?.sms.configured
+                      ? <span className="flex items-center gap-1 text-xs text-green-600 font-normal"><CheckCircle2 className="w-3.5 h-3.5" /> Active</span>
+                      : <span className="flex items-center gap-1 text-xs text-amber-600 font-normal"><XCircle className="w-3.5 h-3.5" /> Not configured</span>}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><p className="text-muted-foreground text-xs mb-1">Provider</p><p className="font-medium">{commConfig.data?.sms.provider}</p></div>
+                    <div><p className="text-muted-foreground text-xs mb-1">From number</p><p className="font-medium">{commConfig.data?.sms.from || "—"}</p></div>
+                  </div>
+                  {!commConfig.data?.sms.configured && (
+                    <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                      <p className="font-semibold">To enable SMS sending:</p>
+                      <ol className="list-decimal list-inside space-y-0.5">
+                        <li>Sign up at <strong>twilio.com</strong> and get a phone number</li>
+                        <li>Add secret <strong>TWILIO_ACCOUNT_SID</strong></li>
+                        <li>Add secret <strong>TWILIO_AUTH_TOKEN</strong></li>
+                        <li>Add secret <strong>TWILIO_FROM</strong> (your Twilio phone number, e.g. +15551234567)</li>
+                      </ol>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Input placeholder="Send test to: +15551234567" value={testPhone} onChange={e => setTestPhone(e.target.value)} className="flex-1" />
+                    <Button
+                      size="sm"
+                      disabled={!commConfig.data?.sms.configured || commLoading === "sms" || !testPhone}
+                      onClick={async () => {
+                        setCommLoading("sms");
+                        try {
+                          const r = await fetch("/api/admin/communications/test-sms", {
+                            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ to: testPhone }),
+                          });
+                          const d = await r.json() as { ok?: boolean; error?: string };
+                          toast({ title: d.ok ? "Test SMS sent!" : "Failed", description: d.error ?? d.ok?.toString(), variant: d.ok ? "default" : "destructive" });
+                        } finally { setCommLoading(null); }
+                      }}
+                    >
+                      <Send className="w-3.5 h-3.5 mr-1.5" />{commLoading === "sms" ? "Sending…" : "Test"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">SMS is sent automatically when a candidate applies and when their AI interview results are ready (requires candidate's phone number).</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="audit" className="mt-4 space-y-3">
