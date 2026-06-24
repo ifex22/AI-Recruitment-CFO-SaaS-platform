@@ -44,7 +44,7 @@ function PublicRoute({ component: Component }: { component: React.ComponentType 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={() => { const { user } = useAuth(); return user ? <Redirect to="/dashboard" /> : <Redirect to="/login" />; }} />
+      <Route path="/" component={ApplyPage} />
       <Route path="/apply" component={ApplyPage} />
       <Route path="/apply/:id/interview" component={(props: { params: { id: string } }) => <ApplyInterviewPage {...props} />} />
       <Route path="/apply/:id" component={(props: { params: { id: string } }) => <ApplyJobPage {...props} />} />
