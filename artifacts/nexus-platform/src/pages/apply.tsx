@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Zap, MapPin, Briefcase, DollarSign, Clock, Search, ArrowRight, Building2, Users, Star, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 type Job = {
@@ -39,146 +38,165 @@ export default function ApplyPage() {
   const fmt = (n: number | null) => n ? `$${(n / 1000).toFixed(0)}k` : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950/30 to-slate-950">
+    <div style={{ minHeight: "100vh", backgroundColor: "#0f172a", fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" }}>
 
-      {/* Thin top nav — only Staff Login, no badge */}
-      <nav className="flex items-center justify-between px-8 py-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-            <Zap className="w-4 h-4 text-white" />
+      {/* Nav */}
+      <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 40px", borderBottom: "1px solid #1e293b" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Zap style={{ width: 18, height: 18, color: "#fff" }} />
           </div>
-          <span className="text-white font-bold text-lg">Nexus AI</span>
+          <span style={{ color: "#ffffff", fontWeight: 700, fontSize: 20 }}>Nexus AI</span>
         </div>
         <Link href="/login">
-          <Button variant="outline" className="border-slate-500 text-slate-200 hover:text-white hover:border-white hover:bg-white/10 font-semibold">
+          <button style={{ backgroundColor: "#2563eb", color: "#ffffff", border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
             Staff Login — Post Jobs
-          </Button>
+          </button>
         </Link>
       </nav>
 
-      {/* HERO — full attention, obvious CTA */}
-      <div className="max-w-4xl mx-auto px-6 pt-16 pb-14 text-center">
-        <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-400/20 rounded-full px-4 py-1.5 mb-8">
-          <Star className="w-3.5 h-3.5 text-blue-400 fill-blue-400" />
-          <span className="text-blue-300 text-sm font-medium">AI interviews · instant results · no waiting</span>
+      {/* Hero */}
+      <div style={{ maxWidth: 800, margin: "0 auto", padding: "72px 24px 56px", textAlign: "center" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, backgroundColor: "#1e3a5f", border: "1px solid #2563eb55", borderRadius: 999, padding: "8px 18px", marginBottom: 32 }}>
+          <Star style={{ width: 14, height: 14, color: "#60a5fa", fill: "#60a5fa" }} />
+          <span style={{ color: "#93c5fd", fontSize: 14, fontWeight: 500 }}>AI interviews · instant results · no waiting</span>
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 leading-tight tracking-tight">
+        <h1 style={{ color: "#ffffff", fontSize: 64, fontWeight: 800, lineHeight: 1.1, margin: "0 0 20px", letterSpacing: "-1px" }}>
           Your next job<br />
-          <span className="text-blue-400">starts here.</span>
+          <span style={{ color: "#3b82f6" }}>starts here.</span>
         </h1>
 
-        <p className="text-slate-300 text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
+        <p style={{ color: "#94a3b8", fontSize: 18, lineHeight: 1.7, maxWidth: 560, margin: "0 auto 40px" }}>
           Browse open roles, apply in minutes, and complete an AI interview instantly —
           no scheduling, no waiting weeks for a callback.
         </p>
 
-        {/* Big search bar */}
-        <div className="relative max-w-2xl mx-auto mb-6">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <Input
+        {/* Search */}
+        <div style={{ position: "relative", maxWidth: 600, margin: "0 auto 32px" }}>
+          <Search style={{ position: "absolute", left: 18, top: "50%", transform: "translateY(-50%)", width: 18, height: 18, color: "#64748b" }} />
+          <input
             placeholder="Search roles, departments, or locations..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="pl-14 pr-6 bg-white/10 border-white/20 text-white placeholder:text-slate-400 h-16 rounded-2xl text-base focus:bg-white/15 focus:border-blue-400/50"
+            style={{
+              width: "100%", boxSizing: "border-box",
+              paddingLeft: 52, paddingRight: 20, height: 56,
+              backgroundColor: "#1e293b", border: "1px solid #334155",
+              borderRadius: 14, color: "#ffffff", fontSize: 15,
+              outline: "none",
+            }}
           />
         </div>
 
-        {/* Stats row */}
-        <div className="flex items-center justify-center gap-8 text-sm text-slate-400 mt-8">
-          <span className="flex items-center gap-1.5"><Briefcase className="w-4 h-4 text-blue-400" /> {jobs.length} open roles</span>
-          <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-blue-400" /> 12,400+ placed</span>
-          <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-blue-400" /> Avg. 18-day hire</span>
+        {/* Stats */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 36, flexWrap: "wrap" }}>
+          {[
+            { icon: <Briefcase style={{ width: 15, height: 15, color: "#3b82f6" }} />, label: `${jobs.length} open roles` },
+            { icon: <Users style={{ width: 15, height: 15, color: "#3b82f6" }} />, label: "12,400+ placed" },
+            { icon: <Clock style={{ width: 15, height: 15, color: "#3b82f6" }} />, label: "Avg. 18-day hire" },
+          ].map(s => (
+            <span key={s.label} style={{ display: "flex", alignItems: "center", gap: 6, color: "#64748b", fontSize: 14 }}>
+              {s.icon}{s.label}
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* Jobs list */}
-      <div className="max-w-4xl mx-auto px-6 pb-24">
+      {/* Jobs */}
+      <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 24px 80px" }}>
         {loading ? (
-          <div className="grid gap-4">
+          <div style={{ display: "grid", gap: 16 }}>
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse" />
+              <div key={i} style={{ height: 140, borderRadius: 16, backgroundColor: "#1e293b", opacity: 0.6 }} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-slate-500">
-            <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-lg">{search ? "No jobs match your search" : "No open positions right now"}</p>
-            <p className="text-sm mt-1">Check back soon</p>
+          <div style={{ textAlign: "center", padding: "80px 0", color: "#475569" }}>
+            <Briefcase style={{ width: 48, height: 48, margin: "0 auto 12px", opacity: 0.3 }} />
+            <p style={{ fontSize: 18, margin: 0 }}>{search ? "No jobs match your search" : "No open positions right now"}</p>
+            <p style={{ fontSize: 14, marginTop: 6, color: "#334155" }}>Check back soon</p>
           </div>
         ) : (
           <>
-            <p className="text-slate-500 text-sm mb-5">
-              Showing {filtered.length} open position{filtered.length !== 1 ? "s" : ""}
+            <p style={{ color: "#64748b", fontSize: 14, marginBottom: 20 }}>
+              {filtered.length} open position{filtered.length !== 1 ? "s" : ""}
             </p>
-            <div className="grid gap-4">
+            <div style={{ display: "grid", gap: 16 }}>
               {filtered.map(job => (
                 <div
                   key={job.id}
-                  className="group relative bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/40 rounded-2xl p-6 transition-all cursor-pointer"
+                  style={{
+                    backgroundColor: "#1e293b",
+                    border: "1px solid #334155",
+                    borderRadius: 16,
+                    padding: 28,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 20,
+                  }}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    {/* Left: info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className="bg-blue-600/20 text-blue-300 border-blue-500/30 text-xs font-medium">
-                          {job.department || "General"}
-                        </Badge>
-                        {job.employment_type && (
-                          <Badge variant="outline" className="border-slate-600 text-slate-400 text-xs">
-                            {job.employment_type}
-                          </Badge>
-                        )}
-                      </div>
-                      <h2 className="text-white text-xl font-bold mb-3 group-hover:text-blue-300 transition-colors">
-                        {job.title}
-                      </h2>
-                      {job.description && (
-                        <p className="text-slate-400 text-sm mb-4 line-clamp-2 leading-relaxed">
-                          {job.description}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-                        {job.location && (
-                          <span className="flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5" /> {job.location}
-                          </span>
-                        )}
-                        {(job.salary_min || job.salary_max) && (
-                          <span className="flex items-center gap-1.5">
-                            <DollarSign className="w-3.5 h-3.5" />
-                            {fmt(job.salary_min)} – {fmt(job.salary_max)}
-                          </span>
-                        )}
-                        {job.openings > 1 && (
-                          <span className="flex items-center gap-1.5">
-                            <Building2 className="w-3.5 h-3.5" /> {job.openings} openings
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
-                          {new Date(job.posted_date).toLocaleDateString()}
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                      <span style={{ backgroundColor: "#1e3a5f", color: "#93c5fd", border: "1px solid #2563eb44", borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 600 }}>
+                        {job.department || "General"}
+                      </span>
+                      {job.employment_type && (
+                        <span style={{ color: "#64748b", border: "1px solid #334155", borderRadius: 6, padding: "3px 10px", fontSize: 12 }}>
+                          {job.employment_type}
                         </span>
-                      </div>
+                      )}
                     </div>
-
-                    {/* Right: Apply CTA */}
-                    <div className="shrink-0 flex flex-col items-end gap-3">
-                      <Link href={`/apply/${job.id}`}>
-                        <Button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-5 rounded-xl text-base gap-2 shadow-lg shadow-blue-900/30">
-                          Apply Now <ArrowRight className="w-4 h-4" />
-                        </Button>
-                      </Link>
-                      <span className="text-xs text-slate-500 flex items-center gap-1">
-                        <Zap className="w-3 h-3 text-blue-500" /> AI interview included
+                    <h2 style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, margin: "0 0 10px", lineHeight: 1.3 }}>
+                      {job.title}
+                    </h2>
+                    {job.description && (
+                      <p style={{ color: "#94a3b8", fontSize: 14, margin: "0 0 14px", lineHeight: 1.6, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                        {job.description}
+                      </p>
+                    )}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 20, fontSize: 13, color: "#64748b" }}>
+                      {job.location && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <MapPin style={{ width: 13, height: 13 }} /> {job.location}
+                        </span>
+                      )}
+                      {(job.salary_min || job.salary_max) && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <DollarSign style={{ width: 13, height: 13 }} /> {fmt(job.salary_min)} – {fmt(job.salary_max)}
+                        </span>
+                      )}
+                      {job.openings > 1 && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <Building2 style={{ width: 13, height: 13 }} /> {job.openings} openings
+                        </span>
+                      )}
+                      <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <Clock style={{ width: 13, height: 13 }} />
+                        {new Date(job.posted_date).toLocaleDateString()}
                       </span>
                     </div>
                   </div>
 
-                  {/* Full card link overlay */}
-                  <Link href={`/apply/${job.id}`}>
-                    <span className="absolute inset-0 rounded-2xl" aria-hidden />
-                  </Link>
+                  {/* CTA */}
+                  <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                    <Link href={`/apply/${job.id}`}>
+                      <button style={{
+                        backgroundColor: "#2563eb", color: "#ffffff",
+                        border: "none", borderRadius: 10,
+                        padding: "12px 24px", fontSize: 15, fontWeight: 700,
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                        whiteSpace: "nowrap",
+                      }}>
+                        Apply Now <ArrowRight style={{ width: 16, height: 16 }} />
+                      </button>
+                    </Link>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#475569" }}>
+                      <Zap style={{ width: 11, height: 11, color: "#3b82f6" }} /> AI interview included
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -186,19 +204,17 @@ export default function ApplyPage() {
         )}
       </div>
 
-      {/* Bottom CTA banner */}
-      <div className="border-t border-white/5 bg-black/20 py-12 text-center">
-        <div className="max-w-xl mx-auto px-6">
-          <h3 className="text-white text-xl font-bold mb-2">Don't see the right role?</h3>
-          <p className="text-slate-400 text-sm mb-6">New positions open regularly. Check back soon or reach out directly.</p>
-          <div className="flex items-center justify-center gap-2 text-slate-500 text-xs">
-            <Zap className="w-3.5 h-3.5 text-blue-500" />
-            Powered by Nexus AI Recruitment Platform
-            <ChevronRight className="w-3 h-3" />
-            <Link href="/login">
-              <span className="text-blue-400 hover:text-blue-300 cursor-pointer">Staff access</span>
-            </Link>
-          </div>
+      {/* Footer */}
+      <div style={{ borderTop: "1px solid #1e293b", backgroundColor: "#090f1a", padding: "40px 24px", textAlign: "center" }}>
+        <h3 style={{ color: "#ffffff", fontSize: 18, fontWeight: 700, margin: "0 0 8px" }}>Don't see the right role?</h3>
+        <p style={{ color: "#64748b", fontSize: 14, margin: "0 0 20px" }}>New positions open regularly. Check back soon.</p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "#475569", fontSize: 12 }}>
+          <Zap style={{ width: 13, height: 13, color: "#3b82f6" }} />
+          Powered by Nexus AI Recruitment
+          <ChevronRight style={{ width: 12, height: 12 }} />
+          <Link href="/login">
+            <span style={{ color: "#3b82f6", cursor: "pointer" }}>Staff access</span>
+          </Link>
         </div>
       </div>
     </div>
