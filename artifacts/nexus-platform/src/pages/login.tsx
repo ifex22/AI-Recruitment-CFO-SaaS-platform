@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Eye, EyeOff } from "lucide-react";
+import { Zap, Eye, EyeOff, Briefcase } from "lucide-react";
 import { Link } from "wouter";
 
 const schema = z.object({
@@ -159,6 +159,15 @@ export default function LoginPage() {
               <Link href="/register" className="text-primary font-medium hover:underline">Create one</Link>
             </span>
             <Link href="/pricing" className="hover:text-foreground transition-colors">View pricing plans</Link>
+          </div>
+
+          <div className="border-t border-border pt-5">
+            <Link href="/apply">
+              <button className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors text-sm font-medium text-foreground">
+                <Briefcase className="w-4 h-4 text-primary" />
+                Looking for a job? Browse open positions &amp; apply
+              </button>
+            </Link>
           </div>
         </div>
       </div>
