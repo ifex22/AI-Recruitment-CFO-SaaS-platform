@@ -50,9 +50,9 @@ export default function ApplyPage() {
           <span className="text-white font-bold text-lg">Nexus AI</span>
         </div>
         <Link href="/login">
-          <span className="text-slate-400 hover:text-white text-sm transition-colors cursor-pointer">
-            Staff login →
-          </span>
+          <Button variant="outline" className="border-slate-500 text-slate-200 hover:text-white hover:border-white hover:bg-white/10 font-semibold">
+            Staff Login — Post Jobs
+          </Button>
         </Link>
       </nav>
 
