@@ -164,49 +164,73 @@ router.get("/admin/audit-logs", async (req, res) => {
 
 // ── Communications ─────────────────────────────────────────────────────────
 
+import { loadCommConfig, saveCommConfig, maskKey, statusOf } from "../lib/comm-config";
+
 router.get("/admin/communications", requireRole("admin"), async (_req, res) => {
+  const cfg = await loadCommConfig();
+  const st = statusOf(cfg);
   res.json({
-    email: {
-      configured: !!process.env.RESEND_API_KEY,
-      from: process.env.FROM_EMAIL ?? "noreply@nexusai.app",
-      provider: "Resend",
+    ...st,
+    keys: {
+      resend_api_key: maskKey(cfg.resend_api_key),
+      from_email: cfg.from_email ?? "",
+      twilio_account_sid: maskKey(cfg.twilio_account_sid),
+      twilio_auth_token: maskKey(cfg.twilio_auth_token),
+      twilio_from: cfg.twilio_from ?? "",
+      openai_api_key: maskKey(cfg.openai_api_key),
     },
-    sms: {
-      configured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM),
-      from: process.env.TWILIO_FROM ?? "",
-      provider: "Twilio",
+  });
+});
+
+router.post("/admin/communications/config", requireRole("admin"), async (req, res) => {
+  const patch = req.body as Record<string, string>;
+  await saveCommConfig(patch);
+  const cfg = await loadCommConfig();
+  const st = statusOf(cfg);
+  res.json({
+    ok: true,
+    ...st,
+    keys: {
+      resend_api_key: maskKey(cfg.resend_api_key),
+      from_email: cfg.from_email ?? "",
+      twilio_account_sid: maskKey(cfg.twilio_account_sid),
+      twilio_auth_token: maskKey(cfg.twilio_auth_token),
+      twilio_from: cfg.twilio_from ?? "",
+      openai_api_key: maskKey(cfg.openai_api_key),
     },
   });
 });
 
 router.post("/admin/communications/test-email", requireRole("admin"), async (req, res) => {
-  if (!process.env.RESEND_API_KEY) {
-    res.status(400).json({ error: "RESEND_API_KEY secret not configured. Add it in Replit Secrets." }); return;
+  const cfg = await loadCommConfig();
+  if (!cfg.resend_api_key) {
+    res.status(400).json({ error: "Resend API key not configured. Enter it in the Communications tab and save." }); return;
   }
   const { to } = req.body as { to?: string };
   if (!to) { res.status(400).json({ error: "to email required" }); return; }
   const { Resend } = await import("resend");
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = new Resend(cfg.resend_api_key);
   const { error } = await resend.emails.send({
-    from: process.env.FROM_EMAIL ?? "noreply@nexusai.app",
+    from: cfg.from_email ?? "noreply@nexusai.app",
     to,
     subject: "Nexus AI — Email Test",
-    html: `<div style="font-family:sans-serif;padding:24px"><h2 style="color:#2563eb">Email is working!</h2><p>This is a test email from your Nexus AI Recruitment Platform.</p></div>`,
+    html: `<div style="font-family:sans-serif;padding:24px;max-width:480px"><h2 style="color:#2563eb">✅ Email is working!</h2><p>This is a test email from your <strong>Nexus AI Recruitment Platform</strong>.</p><p style="color:#64748b;font-size:13px">Sent via Resend · from ${cfg.from_email ?? "noreply@nexusai.app"}</p></div>`,
   });
   if (error) { res.status(500).json({ error: (error as { message?: string }).message ?? "Send failed" }); return; }
   res.json({ ok: true, message: `Test email sent to ${to}` });
 });
 
 router.post("/admin/communications/test-sms", requireRole("admin"), async (req, res) => {
-  if (!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM)) {
-    res.status(400).json({ error: "Twilio secrets not configured. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM in Replit Secrets." }); return;
+  const cfg = await loadCommConfig();
+  if (!(cfg.twilio_account_sid && cfg.twilio_auth_token && cfg.twilio_from)) {
+    res.status(400).json({ error: "Twilio credentials not configured. Enter them in the Communications tab and save." }); return;
   }
   const { to } = req.body as { to?: string };
   if (!to) { res.status(400).json({ error: "to phone number required" }); return; }
   const twilio = (await import("twilio")).default;
-  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  const client = twilio(cfg.twilio_account_sid, cfg.twilio_auth_token);
   try {
-    await client.messages.create({ from: process.env.TWILIO_FROM, to, body: "Nexus AI test SMS — your notifications are working!" });
+    await client.messages.create({ from: cfg.twilio_from, to, body: "✅ Nexus AI test SMS — your notifications are working!" });
     res.json({ ok: true, message: `Test SMS sent to ${to}` });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "SMS send failed";

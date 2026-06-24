@@ -1,30 +1,40 @@
 import { Router, type IRouter } from "express";
 import { supabase } from "../lib/supabase";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { openai as replitOpenai } from "@workspace/integrations-openai-ai-server";
+import OpenAI from "openai";
+import { loadCommConfig } from "../lib/comm-config";
 import crypto from "crypto";
-import { Resend } from "resend";
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM_EMAIL = process.env.FROM_EMAIL ?? "noreply@nexusai.app";
 
 async function sendEmail(to: string, subject: string, html: string) {
-  if (!resend) return;
   try {
-    await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
+    const cfg = await loadCommConfig();
+    if (!cfg.resend_api_key) return;
+    const { Resend } = await import("resend");
+    const resend = new Resend(cfg.resend_api_key);
+    await resend.emails.send({ from: cfg.from_email ?? "noreply@nexusai.app", to, subject, html });
   } catch {
-    // email errors are non-fatal
+    // non-fatal
   }
 }
 
 async function sendSms(to: string, body: string) {
-  if (!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM)) return;
   try {
+    const cfg = await loadCommConfig();
+    if (!(cfg.twilio_account_sid && cfg.twilio_auth_token && cfg.twilio_from)) return;
     const twilio = (await import("twilio")).default;
-    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    await client.messages.create({ from: process.env.TWILIO_FROM, to, body });
+    const client = twilio(cfg.twilio_account_sid, cfg.twilio_auth_token);
+    await client.messages.create({ from: cfg.twilio_from, to, body });
   } catch {
-    // sms errors are non-fatal
+    // non-fatal
   }
+}
+
+async function getOpenAI() {
+  const cfg = await loadCommConfig();
+  if (cfg.openai_api_key) {
+    return new OpenAI({ apiKey: cfg.openai_api_key });
+  }
+  return replitOpenai;
 }
 
 const router: IRouter = Router();
@@ -195,7 +205,8 @@ ${isLastQuestion ? "- This is the final response. Thank the candidate, tell them
     ...messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
   ];
 
-  const completion = await openai.chat.completions.create({
+  const aiClient = await getOpenAI();
+  const completion = await aiClient.chat.completions.create({
     model: "gpt-5-mini",
     max_completion_tokens: 512,
     messages: chatMessages,
@@ -275,7 +286,8 @@ Respond ONLY with valid JSON:
   "improvements": ["<area1>"]
 }`;
 
-  const scoreCompletion = await openai.chat.completions.create({
+  const aiClient2 = await getOpenAI();
+  const scoreCompletion = await aiClient2.chat.completions.create({
     model: "gpt-5-mini",
     max_completion_tokens: 512,
     messages: [{ role: "user", content: scorePrompt }],
