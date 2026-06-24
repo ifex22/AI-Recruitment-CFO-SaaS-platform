@@ -14,7 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, Edit2, Shield, History } from "lucide-react";
+import { Plus, Trash2, Edit2, Shield, History, Bot } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const ROLE_COLORS: Record<string, string> = {
@@ -40,11 +41,12 @@ const orgSchema = z.object({
   headquarters: z.string().optional(),
   currency: z.string().optional(),
   fiscal_year_start: z.string().optional(),
+  hiring_policy: z.string().optional(),
 });
 type OrgForm = z.infer<typeof orgSchema>;
 
 type PlatformUser = { id: string; email: string; full_name: string; role: string; status: string; created_at: string };
-type OrgData = { name?: string; industry?: string; size?: string; headquarters?: string; currency?: string; fiscal_year_start?: string };
+type OrgData = { name?: string; industry?: string; size?: string; headquarters?: string; currency?: string; fiscal_year_start?: string; hiring_policy?: string };
 type AuditLog = { id: string; action: string; entity_type: string; user_name: string; details?: string; created_at: string };
 
 export default function AdminPage() {
@@ -69,7 +71,7 @@ export default function AdminPage() {
   const orgData = org.data as OrgData | undefined;
   const orgForm = useForm<OrgForm>({
     resolver: zodResolver(orgSchema),
-    values: { name: orgData?.name ?? "", industry: orgData?.industry ?? "", size: orgData?.size ?? "", headquarters: orgData?.headquarters ?? "", currency: orgData?.currency ?? "USD", fiscal_year_start: orgData?.fiscal_year_start ?? "January" },
+    values: { name: orgData?.name ?? "", industry: orgData?.industry ?? "", size: orgData?.size ?? "", headquarters: orgData?.headquarters ?? "", currency: orgData?.currency ?? "USD", fiscal_year_start: orgData?.fiscal_year_start ?? "January", hiring_policy: orgData?.hiring_policy ?? "" },
   });
 
   const usersData = users.data as PlatformUser[] | undefined ?? [];
@@ -220,7 +222,21 @@ export default function AdminPage() {
                       </Select>
                     </div>
                   </div>
-                  <div className="flex justify-end">
+                  <div className="col-span-2 space-y-1.5 border-t pt-4 mt-2">
+                    <Label className="flex items-center gap-1.5 text-sm font-semibold">
+                      <Bot className="w-4 h-4 text-primary" /> AI Hiring Policy
+                    </Label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      This text is given to the AI interviewer as its scoring criteria. Describe what makes a great hire at your company.
+                    </p>
+                    <Textarea
+                      data-testid="input-hiring-policy"
+                      {...orgForm.register("hiring_policy")}
+                      placeholder="e.g. We value candidates who demonstrate strong technical fundamentals, clear communication, and a growth mindset. Prioritise problem-solving ability and cultural fit over years of experience."
+                      rows={4}
+                    />
+                  </div>
+                  <div className="col-span-2 flex justify-end">
                     <Button data-testid="button-save-org" type="submit" disabled={updateOrg.isPending}>{updateOrg.isPending ? "Saving..." : "Save Settings"}</Button>
                   </div>
                 </form>

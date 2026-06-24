@@ -46,8 +46,8 @@ function Router() {
     <Switch>
       <Route path="/" component={ApplyPage} />
       <Route path="/apply" component={ApplyPage} />
-      <Route path="/apply/:id/interview" component={(props: { params: { id: string } }) => <ApplyInterviewPage {...props} />} />
-      <Route path="/apply/:id" component={(props: { params: { id: string } }) => <ApplyJobPage {...props} />} />
+      <Route path="/apply/:id/interview" component={ApplyInterviewPage} />
+      <Route path="/apply/:id" component={ApplyJobPage} />
       <Route path="/login" component={() => <PublicRoute component={LoginPage} />} />
       <Route path="/register" component={() => <PublicRoute component={RegisterPage} />} />
       <Route path="/forgot-password" component={() => <PublicRoute component={ForgotPasswordPage} />} />

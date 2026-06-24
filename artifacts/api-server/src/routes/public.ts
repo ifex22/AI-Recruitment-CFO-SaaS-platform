@@ -43,7 +43,12 @@ function parseAddr(addr: string | null): Record<string, unknown> {
 async function getHiringRules(): Promise<string> {
   const { data } = await supabase.from("brands").select("description, name").limit(1).maybeSingle();
   if (!data) return "Be fair, professional, and assess technical skills.";
-  return `Company: ${data.name}. Hiring policy: ${data.description || "Assess candidates fairly based on skills, experience, and cultural fit. Be professional and inclusive."}`;
+  let policy = "Assess candidates fairly based on skills, experience, and cultural fit. Be professional and inclusive.";
+  try {
+    const details = JSON.parse(data.description ?? "{}");
+    if (details.hiring_policy) policy = details.hiring_policy;
+  } catch { /* use default */ }
+  return `Company: ${data.name}. Hiring policy: ${policy}`;
 }
 
 router.get("/public/jobs", async (req, res) => {

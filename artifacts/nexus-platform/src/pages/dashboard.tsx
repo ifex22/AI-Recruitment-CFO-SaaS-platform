@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
-import { Users, Briefcase, UserCheck, Calendar, TrendingUp, TrendingDown, DollarSign, Flame } from "lucide-react";
+import { Users, Briefcase, UserCheck, Calendar, TrendingUp, TrendingDown, DollarSign, Flame, Bot, Mail, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
 function StatCard({ label, value, icon: Icon, sub, trend }: { label: string; value: string | number; icon: React.ElementType; sub?: string; trend?: "up" | "down" }) {
@@ -33,12 +35,56 @@ function StatCard({ label, value, icon: Icon, sub, trend }: { label: string; val
 
 const STAGE_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#06b6d4", "#ef4444"];
 
+type AiCandidate = {
+  id: string; name: string; email: string; status: string;
+  interview_status?: string; interview_score?: number; recommendation?: string; email_sent?: boolean; job_title?: string; applied_at?: string;
+};
+
+function useAiPipeline() {
+  const [data, setData] = useState<AiCandidate[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetch("/api/candidates", { headers: { Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}` } })
+      .then(r => r.json())
+      .then((rows: Record<string, unknown>[]) => {
+        const mapped = (Array.isArray(rows) ? rows : []).map(r => {
+          let extra: Record<string, unknown> = {};
+          try { extra = JSON.parse((r.address as string) ?? "{}"); } catch {}
+          const score = extra.interview_score as Record<string, unknown> | undefined;
+          return {
+            id: r.id as string, name: r.name as string, email: r.email as string,
+            status: r.status as string,
+            job_title: (extra.job_title as string) ?? "",
+            interview_status: (extra.interview_status as string) ?? "pending",
+            interview_score: score ? Number(score.overall_score ?? 0) : undefined,
+            recommendation: score ? (score.recommendation as string) : undefined,
+            email_sent: !!(extra.email_sent),
+            applied_at: r.joined as string,
+          };
+        }).filter(c => c.interview_status !== undefined);
+        setData(mapped);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+  return { data, loading };
+}
+
+const REC_COLORS: Record<string, string> = {
+  strong_hire: "text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400",
+  hire: "text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400",
+  maybe: "text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400",
+  no_hire: "text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400",
+};
+const REC_LABEL: Record<string, string> = { strong_hire: "Strong Hire", hire: "Hire", maybe: "Maybe", no_hire: "No Hire" };
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const summary = useGetDashboardSummary({ query: { queryKey: getGetDashboardSummaryQueryKey() } });
   const activity = useGetRecentActivity({ query: { queryKey: getGetRecentActivityQueryKey() } });
   const funnel = useGetRecruitmentFunnel({ query: { queryKey: getGetRecruitmentFunnelQueryKey() } });
   const financial = useGetFinancialSnapshot({ query: { queryKey: getGetFinancialSnapshotQueryKey() } });
+  const pipeline = useAiPipeline();
 
   const s = summary.data as Record<string, number> | undefined;
   const fin = financial.data as { months?: string[]; revenue_trend?: number[]; expense_trend?: number[]; profit_trend?: number[] } | undefined;
@@ -135,6 +181,87 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Recruitment Pipeline */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Bot className="w-4 h-4 text-primary" /> AI Recruitment Pipeline
+            </CardTitle>
+            <Link href="/candidates">
+              <span className="text-xs text-primary hover:underline cursor-pointer">View all candidates →</span>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {pipeline.loading ? <Skeleton className="h-40" /> : pipeline.data.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">
+              <Bot className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No candidates in the AI pipeline yet.</p>
+              <p className="text-xs mt-1">Applications via the public portal will appear here automatically.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Candidate</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Role</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Interview</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">AI Score</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Result</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground pb-2">Email</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pipeline.data.slice(0, 8).map(c => (
+                    <tr key={c.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="py-2.5 pr-4">
+                        <div>
+                          <p className="font-medium text-foreground truncate max-w-[140px]">{c.name}</p>
+                          <p className="text-xs text-muted-foreground truncate max-w-[140px]">{c.email}</p>
+                        </div>
+                      </td>
+                      <td className="py-2.5 pr-4 text-xs text-muted-foreground truncate max-w-[120px]">{c.job_title || "—"}</td>
+                      <td className="py-2.5 pr-4">
+                        {c.interview_status === "completed" ? (
+                          <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="w-3.5 h-3.5" /> Done</span>
+                        ) : c.interview_status === "in_progress" || c.interview_status === "awaiting_score" ? (
+                          <span className="flex items-center gap-1 text-xs text-amber-600"><Clock className="w-3.5 h-3.5" /> In progress</span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground"><AlertCircle className="w-3.5 h-3.5" /> Pending</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        {c.interview_score != null ? (
+                          <span className={cn("font-bold text-sm", c.interview_score >= 75 ? "text-green-600" : c.interview_score >= 50 ? "text-amber-600" : "text-red-500")}>
+                            {c.interview_score}
+                          </span>
+                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        {c.recommendation ? (
+                          <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", REC_COLORS[c.recommendation] ?? "")}>
+                            {REC_LABEL[c.recommendation] ?? c.recommendation}
+                          </span>
+                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                      </td>
+                      <td className="py-2.5">
+                        {c.email_sent ? (
+                          <span className="flex items-center gap-1 text-xs text-green-600"><Mail className="w-3.5 h-3.5" /> Sent</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Activity */}
       <Card>
