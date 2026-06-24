@@ -50,7 +50,7 @@ router.post("/admin/users", requireRole("admin"), async (req, res) => {
 });
 
 router.get("/admin/users/:id", requireRole("admin"), async (req, res) => {
-  const { data, error } = await supabase.auth.admin.getUserById(req.params.id);
+  const { data, error } = await supabase.auth.admin.getUserById(String(req.params.id));
   if (error || !data.user) { res.status(404).json({ error: "Not found" }); return; }
   const u = data.user;
   res.json({
@@ -68,14 +68,15 @@ router.patch("/admin/users/:id", requireRole("admin"), async (req, res) => {
 
   const updates: Parameters<typeof supabase.auth.admin.updateUserById>[1] = {};
   if (full_name || role) {
-    updates.user_metadata = {};
-    if (full_name) updates.user_metadata.full_name = full_name;
-    if (role) updates.user_metadata.role = role;
+    const meta: Record<string, unknown> = {};
+    if (full_name) meta.full_name = full_name;
+    if (role) meta.role = role;
+    updates.user_metadata = meta;
   }
   if (status === "suspended") updates.ban_duration = "87600h";
   if (status === "active") updates.ban_duration = "none";
 
-  const { data, error } = await supabase.auth.admin.updateUserById(req.params.id, updates);
+  const { data, error } = await supabase.auth.admin.updateUserById(String(req.params.id), updates);
   if (error) { res.status(400).json({ error: error.message }); return; }
   const u = data.user;
   res.json({
@@ -89,7 +90,7 @@ router.patch("/admin/users/:id", requireRole("admin"), async (req, res) => {
 });
 
 router.delete("/admin/users/:id", requireRole("admin"), async (req, res) => {
-  const { error } = await supabase.auth.admin.deleteUser(req.params.id);
+  const { error } = await supabase.auth.admin.deleteUser(String(req.params.id));
   if (error) { res.status(400).json({ error: error.message }); return; }
   res.status(204).send();
 });

@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { Users, Briefcase, UserCheck, Calendar, TrendingUp, TrendingDown, DollarSign, Flame, Bot, Mail, Phone, Clock, CheckCircle2, AlertCircle, Star, Bell, ArrowRight, MessageSquare } from "lucide-react";
+import { Users, Briefcase, UserCheck, Calendar, TrendingUp, TrendingDown, DollarSign, Flame, Bot, Mail, Phone, Clock, CheckCircle2, AlertCircle, Star, Bell, ArrowRight, MessageSquare, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
@@ -274,6 +274,18 @@ export default function DashboardPage() {
                             ))}
                           </div>
                         )}
+                        <div className="flex items-center gap-2 mt-2.5">
+                          <Link href={`/candidates/${n.candidate_id}`}>
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 bg-primary/8 hover:bg-primary/15 px-2.5 py-1 rounded-md transition-colors cursor-pointer">
+                              <ExternalLink className="w-3 h-3" /> View Profile
+                            </span>
+                          </Link>
+                          <Link href="/interviews">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/70 px-2.5 py-1 rounded-md transition-colors cursor-pointer">
+                              <Calendar className="w-3 h-3" /> Schedule Interview
+                            </span>
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   );
@@ -299,18 +311,20 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-2.5">
                   {topPicks.slice(0, 4).map(n => (
-                    <div key={n.id} className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold shrink-0">
-                        {n.candidate_name.charAt(0)}
+                    <Link key={n.id} href={`/candidates/${n.candidate_id}`}>
+                      <div className="flex items-center gap-2 hover:bg-muted/40 rounded-md px-1.5 py-1 -mx-1.5 transition-colors cursor-pointer">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold shrink-0">
+                          {n.candidate_name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate">{n.candidate_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{n.job_title}</p>
+                        </div>
+                        <div className={cn("text-sm font-bold tabular-nums shrink-0", n.score! >= 75 ? "text-green-600" : "text-blue-600")}>
+                          {n.score}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold truncate">{n.candidate_name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{n.job_title}</p>
-                      </div>
-                      <div className={cn("text-sm font-bold tabular-nums shrink-0", n.score! >= 75 ? "text-green-600" : "text-blue-600")}>
-                        {n.score}
-                      </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

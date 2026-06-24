@@ -29,6 +29,15 @@ async function sendSms(to: string, body: string) {
   }
 }
 
+function getAppUrl(): string {
+  const domains = process.env.REPLIT_DOMAINS;
+  if (domains) {
+    const primary = domains.split(",")[0].trim();
+    return `https://${primary}`;
+  }
+  return "http://localhost:80";
+}
+
 async function getOpenAI() {
   const cfg = await loadCommConfig();
   // Only use stored key if it looks real (sk- prefix, at least 20 chars)
@@ -140,7 +149,9 @@ router.post("/public/apply", async (req, res) => {
 
   // Notify admin/recruiter
   const adminCfg = await loadCommConfig();
+  const appUrl = getAppUrl();
   if (adminCfg.admin_email) {
+    const candidateUrl = `${appUrl}/candidates/${data.id}`;
     await sendEmail(
       adminCfg.admin_email,
       `🆕 New application — ${full_name} for ${job_title ?? "a role"}`,
@@ -153,8 +164,9 @@ router.post("/public/apply", async (req, res) => {
           <tr><td style="padding:6px 12px 6px 0;color:#64748b">Experience</td><td style="padding:6px 0">${experience_years ?? "—"} years</td></tr>
           <tr><td style="padding:6px 12px 6px 0;color:#64748b">Expected Salary</td><td style="padding:6px 0">${expected_salary ? "$" + expected_salary : "—"}</td></tr>
         </table>
-        <p style="color:#64748b;font-size:12px">AI interview is pending — score will appear in your dashboard once completed.</p>
-        <p style="color:#94a3b8;font-size:11px;margin-top:24px">Nexus AI Recruitment Platform</p>
+        <p style="color:#64748b;font-size:12px;margin-bottom:20px">AI interview is pending — the candidate is completing it now. Once scored, you'll receive another alert with the full result.</p>
+        <a href="${candidateUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:600">View Candidate Profile →</a>
+        <p style="color:#94a3b8;font-size:11px;margin-top:28px">Nexus AI Recruitment Platform</p>
       </div>`
     );
   }
@@ -373,6 +385,9 @@ Respond ONLY with valid JSON:
   const adminRecLabel = recEmoji[scoreResult.recommendation as string] ?? "🔄 Under Review";
   const scoreColor = overallScore >= 75 ? "#16a34a" : overallScore >= 50 ? "#d97706" : "#dc2626";
   if (adminCfg2.admin_email) {
+    const appUrl2 = getAppUrl();
+    const candidateProfileUrl = `${appUrl2}/candidates/${candidate_id}`;
+    const scheduleInterviewUrl = `${appUrl2}/interviews`;
     await sendEmail(
       adminCfg2.admin_email,
       `${adminRecLabel} — ${candidate.name as string} scored ${overallScore}/100 for ${jobTitle}`,
@@ -386,8 +401,11 @@ Respond ONLY with valid JSON:
         </div>
         <p><strong>Summary:</strong> ${scoreResult.summary ?? ""}</p>
         ${(scoreResult.strengths as string[] ?? []).length ? `<p><strong>Strengths:</strong></p><ul>${(scoreResult.strengths as string[]).map(s => `<li>${s}</li>`).join("")}</ul>` : ""}
-        <p style="color:#64748b;font-size:12px">Review this candidate in your Nexus AI Dashboard → Recruitment.</p>
-        <p style="color:#94a3b8;font-size:11px;margin-top:24px">Nexus AI Recruitment Platform</p>
+        <div style="margin:28px 0;display:flex;gap:12px;flex-wrap:wrap">
+          <a href="${candidateProfileUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:600">View Candidate Profile →</a>
+          <a href="${scheduleInterviewUrl}" style="display:inline-block;background:#f1f5f9;color:#1e293b;text-decoration:none;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:600;border:1px solid #e2e8f0">Schedule Interview</a>
+        </div>
+        <p style="color:#94a3b8;font-size:11px;margin-top:8px">Nexus AI Recruitment Platform</p>
       </div>`
     );
   }
