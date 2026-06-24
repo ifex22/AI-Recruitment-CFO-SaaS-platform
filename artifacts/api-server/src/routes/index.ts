@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { requireAuth } from "../middleware/auth";
 import healthRouter from "./health";
 import authRouter from "./auth";
+import publicRouter from "./public";
 import dashboardRouter from "./dashboard";
 import jobsRouter from "./jobs";
 import candidatesRouter from "./candidates";
@@ -13,9 +14,10 @@ import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
-// Public: health + auth
+// Public: health + auth + public recruitment portal
 router.use(healthRouter);
 router.use(authRouter);
+router.use(publicRouter);
 
 // Protected: all other routes require authentication
 router.use(requireAuth);

@@ -8,6 +8,9 @@ import AppLayout from "@/components/layout/app-layout";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import ForgotPasswordPage from "@/pages/forgot-password";
+import ApplyPage from "@/pages/apply";
+import ApplyJobPage from "@/pages/apply-job";
+import ApplyInterviewPage from "@/pages/apply-interview";
 import DashboardPage from "@/pages/dashboard";
 import JobsPage from "@/pages/jobs";
 import JobDetailPage from "@/pages/job-detail";
@@ -42,6 +45,9 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={() => { const { user } = useAuth(); return user ? <Redirect to="/dashboard" /> : <Redirect to="/login" />; }} />
+      <Route path="/apply" component={ApplyPage} />
+      <Route path="/apply/:id/interview" component={(props: { params: { id: string } }) => <ApplyInterviewPage {...props} />} />
+      <Route path="/apply/:id" component={(props: { params: { id: string } }) => <ApplyJobPage {...props} />} />
       <Route path="/login" component={() => <PublicRoute component={LoginPage} />} />
       <Route path="/register" component={() => <PublicRoute component={RegisterPage} />} />
       <Route path="/forgot-password" component={() => <PublicRoute component={ForgotPasswordPage} />} />
