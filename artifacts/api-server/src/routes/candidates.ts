@@ -19,7 +19,7 @@ function mapCandidate(c: Record<string, unknown>) {
     status: c.status,
     experience_years: c.total_orders ?? 0,
     expected_salary: c.total_spent ?? 0,
-    ai_score: c.loyalty_points != null ? Number(c.loyalty_points) / 10 : null,
+    ai_score: c.loyalty_points != null && Number(c.loyalty_points) > 0 ? Number(c.loyalty_points) / 10 : null,
     applied_date: c.joined,
     skills: extra.skills ?? [],
     location: extra.location ?? "",
