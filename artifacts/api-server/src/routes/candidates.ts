@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { supabase } from "../lib/supabase";
+import { loadCommConfig } from "../lib/comm-config";
 
 const router: IRouter = Router();
 
@@ -151,6 +152,71 @@ router.post("/candidates/:id/score", async (req, res) => {
     weaknesses: ["Could improve leadership skills"],
     risk_factors: aiScore < 65 ? ["Skills gap in key areas"] : [],
     suggested_salary: Number(c.total_spent) ?? null,
+  });
+});
+
+// ── AI Recruiter Notifications feed ────────────────────────────────────────
+
+router.get("/recruitment/notifications", async (req, res) => {
+  const { data } = await supabase
+    .from("customers")
+    .select("id, name, email, phone, status, loyalty_points, joined, address, updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(50);
+
+  const cfg = await loadCommConfig();
+
+  const notifications = (data ?? []).flatMap(c => {
+    const extra = parseAddr(c.address as string | null);
+    if (!extra.interview_token) return []; // not from public portal
+
+    const score = extra.interview_score as Record<string, unknown> | undefined;
+    const interviewStatus = extra.interview_status as string ?? "pending";
+    const overallScore = score ? Number(score.overall_score ?? 0) : null;
+    const recommendation = score ? (score.recommendation as string) : null;
+    const jobTitle = (extra.job_title as string) ?? "a role";
+
+    const items: unknown[] = [];
+
+    if (interviewStatus === "completed" && score) {
+      items.push({
+        id: `scored-${c.id}`,
+        type: "interview_scored",
+        candidate_id: c.id,
+        candidate_name: c.name,
+        candidate_email: c.email,
+        job_title: jobTitle,
+        score: overallScore,
+        recommendation,
+        summary: (score.summary as string) ?? "",
+        strengths: (score.strengths as string[]) ?? [],
+        timestamp: c.updated_at,
+        email_notified: !!(extra.email_sent),
+      });
+    } else {
+      items.push({
+        id: `applied-${c.id}`,
+        type: "new_application",
+        candidate_id: c.id,
+        candidate_name: c.name,
+        candidate_email: c.email,
+        job_title: jobTitle,
+        interview_status: interviewStatus,
+        timestamp: c.joined ?? c.updated_at,
+      });
+    }
+
+    return items;
+  });
+
+  res.json({
+    notifications,
+    admin_configured: {
+      email: !!(cfg.admin_email),
+      sms: !!(cfg.admin_phone),
+      admin_email: cfg.admin_email ?? null,
+      admin_phone: cfg.admin_phone ?? null,
+    },
   });
 });
 

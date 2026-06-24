@@ -7,6 +7,8 @@ export interface CommConfig {
   twilio_auth_token?: string;
   twilio_from?: string;
   openai_api_key?: string;
+  admin_email?: string;
+  admin_phone?: string;
 }
 
 let _cache: CommConfig | null = null;
@@ -30,6 +32,8 @@ export async function loadCommConfig(): Promise<CommConfig> {
     twilio_auth_token: cfg.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN,
     twilio_from: cfg.twilio_from || process.env.TWILIO_FROM,
     openai_api_key: cfg.openai_api_key || process.env.OPENAI_API_KEY,
+    admin_email: cfg.admin_email || process.env.ADMIN_EMAIL,
+    admin_phone: cfg.admin_phone || process.env.ADMIN_PHONE,
   };
 
   _cache = merged;
@@ -83,6 +87,10 @@ export function statusOf(cfg: CommConfig) {
     ai: {
       configured: !!(cfg.openai_api_key),
       provider: "OpenAI",
+    },
+    notifications: {
+      admin_email_set: !!(cfg.admin_email),
+      admin_phone_set: !!(cfg.admin_phone),
     },
   };
 }

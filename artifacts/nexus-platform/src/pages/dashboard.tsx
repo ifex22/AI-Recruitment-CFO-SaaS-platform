@@ -1,9 +1,10 @@
 import { useGetDashboardSummary, useGetRecentActivity, useGetRecruitmentFunnel, useGetFinancialSnapshot, getGetDashboardSummaryQueryKey, getGetRecruitmentFunnelQueryKey, getGetFinancialSnapshotQueryKey, getGetRecentActivityQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
-import { Users, Briefcase, UserCheck, Calendar, TrendingUp, TrendingDown, DollarSign, Flame, Bot, Mail, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { Users, Briefcase, UserCheck, Calendar, TrendingUp, TrendingDown, DollarSign, Flame, Bot, Mail, Phone, Clock, CheckCircle2, AlertCircle, Star, Bell, ArrowRight, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
@@ -35,48 +36,71 @@ function StatCard({ label, value, icon: Icon, sub, trend }: { label: string; val
 
 const STAGE_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#06b6d4", "#ef4444"];
 
-type AiCandidate = {
-  id: string; name: string; email: string; status: string;
-  interview_status?: string; interview_score?: number; recommendation?: string; email_sent?: boolean; job_title?: string; applied_at?: string;
+type AiNotification = {
+  id: string;
+  type: "interview_scored" | "new_application";
+  candidate_id: string;
+  candidate_name: string;
+  candidate_email: string;
+  job_title: string;
+  score?: number;
+  recommendation?: string;
+  summary?: string;
+  strengths?: string[];
+  interview_status?: string;
+  email_notified?: boolean;
+  timestamp: string;
 };
 
-function useAiPipeline() {
-  const [data, setData] = useState<AiCandidate[]>([]);
+type NotificationsResponse = {
+  notifications: AiNotification[];
+  admin_configured: { email: boolean; sms: boolean; admin_email: string | null; admin_phone: string | null };
+};
+
+function useAiNotifications() {
+  const [data, setData] = useState<NotificationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    fetch("/api/candidates", { headers: { Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}` } })
+    fetch("/api/recruitment/notifications", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}` },
+    })
       .then(r => r.json())
-      .then((rows: Record<string, unknown>[]) => {
-        const mapped = (Array.isArray(rows) ? rows : []).map(r => {
-          let extra: Record<string, unknown> = {};
-          try { extra = JSON.parse((r.address as string) ?? "{}"); } catch {}
-          const score = extra.interview_score as Record<string, unknown> | undefined;
-          return {
-            id: r.id as string, name: r.name as string, email: r.email as string,
-            status: r.status as string,
-            job_title: (extra.job_title as string) ?? "",
-            interview_status: (extra.interview_status as string) ?? "pending",
-            interview_score: score ? Number(score.overall_score ?? 0) : undefined,
-            recommendation: score ? (score.recommendation as string) : undefined,
-            email_sent: !!(extra.email_sent),
-            applied_at: r.joined as string,
-          };
-        }).filter(c => c.interview_status !== undefined);
-        setData(mapped);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      .then(setData)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
   return { data, loading };
 }
 
-const REC_COLORS: Record<string, string> = {
-  strong_hire: "text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400",
-  hire: "text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400",
-  maybe: "text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400",
-  no_hire: "text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400",
+const REC_META: Record<string, { label: string; color: string; icon: string }> = {
+  strong_hire: { label: "Strong Hire", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400", icon: "🏆" },
+  hire:        { label: "Hire",        color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",   icon: "✅" },
+  maybe:       { label: "Maybe",       color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400", icon: "🔄" },
+  no_hire:     { label: "No Hire",     color: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",       icon: "❌" },
 };
-const REC_LABEL: Record<string, string> = { strong_hire: "Strong Hire", hire: "Hire", maybe: "Maybe", no_hire: "No Hire" };
+
+function ScoreBar({ score }: { score: number }) {
+  const color = score >= 75 ? "bg-green-500" : score >= 50 ? "bg-amber-500" : "bg-red-500";
+  return (
+    <div className="flex items-center gap-2">
+      <span className={cn("text-lg font-bold tabular-nums", score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-600" : "text-red-500")}>{score}</span>
+      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div className={cn("h-full rounded-full", color)} style={{ width: `${score}%` }} />
+      </div>
+      <span className="text-xs text-muted-foreground">/ 100</span>
+    </div>
+  );
+}
+
+function timeAgo(ts: string) {
+  const diff = Date.now() - new Date(ts).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -84,7 +108,7 @@ export default function DashboardPage() {
   const activity = useGetRecentActivity({ query: { queryKey: getGetRecentActivityQueryKey() } });
   const funnel = useGetRecruitmentFunnel({ query: { queryKey: getGetRecruitmentFunnelQueryKey() } });
   const financial = useGetFinancialSnapshot({ query: { queryKey: getGetFinancialSnapshotQueryKey() } });
-  const pipeline = useAiPipeline();
+  const notifications = useAiNotifications();
 
   const s = summary.data as Record<string, number> | undefined;
   const fin = financial.data as { months?: string[]; revenue_trend?: number[]; expense_trend?: number[]; profit_trend?: number[] } | undefined;
@@ -95,10 +119,15 @@ export default function DashboardPage() {
     month,
     revenue: fin.revenue_trend?.[i] ?? 0,
     expenses: fin.expense_trend?.[i] ?? 0,
-    profit: fin.profit_trend?.[i] ?? 0,
   })) ?? [];
 
   const fmt = (n: number) => n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M` : n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
+
+  const notifs = notifications.data?.notifications ?? [];
+  const scored = notifs.filter(n => n.type === "interview_scored");
+  const pending = notifs.filter(n => n.type === "new_application");
+  const topPicks = scored.filter(n => n.recommendation === "strong_hire" || n.recommendation === "hire");
+  const adminCfg = notifications.data?.admin_configured;
 
   return (
     <div className="p-6 space-y-6">
@@ -182,86 +211,167 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* AI Recruitment Pipeline */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Bot className="w-4 h-4 text-primary" /> AI Recruitment Pipeline
-            </CardTitle>
-            <Link href="/candidates">
-              <span className="text-xs text-primary hover:underline cursor-pointer">View all candidates →</span>
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {pipeline.loading ? <Skeleton className="h-40" /> : pipeline.data.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              <Bot className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No candidates in the AI pipeline yet.</p>
-              <p className="text-xs mt-1">Applications via the public portal will appear here automatically.</p>
+      {/* AI Recruiter Inbox */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        {/* Left: Scored interviews */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Bot className="w-4 h-4 text-primary" /> AI Recruiter Inbox
+                {scored.length > 0 && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold">{scored.length}</span>
+                )}
+              </CardTitle>
+              <Link href="/candidates">
+                <span className="text-xs text-primary hover:underline cursor-pointer flex items-center gap-0.5">All candidates <ArrowRight className="w-3 h-3" /></span>
+              </Link>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Candidate</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Role</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Interview</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">AI Score</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Result</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground pb-2">Email</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {pipeline.data.slice(0, 8).map(c => (
-                    <tr key={c.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="py-2.5 pr-4">
-                        <div>
-                          <p className="font-medium text-foreground truncate max-w-[140px]">{c.name}</p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[140px]">{c.email}</p>
+            {/* Admin notification status */}
+            {!notifications.loading && adminCfg && (
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-xs text-muted-foreground">Recruiter alerts:</span>
+                {adminCfg.email
+                  ? <span className="flex items-center gap-1 text-xs text-green-600"><Mail className="w-3 h-3" /> {adminCfg.admin_email}</span>
+                  : <Link href="/admin"><span className="text-xs text-amber-600 hover:underline cursor-pointer flex items-center gap-1"><Mail className="w-3 h-3" /> Set recruiter email →</span></Link>}
+                {adminCfg.sms
+                  ? <span className="flex items-center gap-1 text-xs text-green-600"><MessageSquare className="w-3 h-3" /> {adminCfg.admin_phone}</span>
+                  : null}
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            {notifications.loading ? <Skeleton className="h-48" /> : scored.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Bot className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                <p className="text-sm font-medium">No AI-scored interviews yet</p>
+                <p className="text-xs mt-1 max-w-xs mx-auto">When a candidate completes their AI interview via the public job board, their score and recommendation will appear here instantly.</p>
+                <Link href="/"><span className="text-xs text-primary hover:underline cursor-pointer mt-3 inline-block">View public job board →</span></Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {scored.slice(0, 6).map(n => {
+                  const rec = REC_META[n.recommendation ?? ""] ?? { label: "Pending", color: "bg-muted text-muted-foreground", icon: "🔄" };
+                  return (
+                    <div key={n.id} className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors">
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-lg shrink-0 font-bold">
+                        {n.candidate_name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-foreground">{n.candidate_name}</span>
+                          <span className={cn("text-xs px-1.5 py-0.5 rounded-full font-medium", rec.color)}>{rec.icon} {rec.label}</span>
+                          {n.email_notified && <span className="flex items-center gap-0.5 text-xs text-green-600"><Mail className="w-3 h-3" /> Notified</span>}
                         </div>
-                      </td>
-                      <td className="py-2.5 pr-4 text-xs text-muted-foreground truncate max-w-[120px]">{c.job_title || "—"}</td>
-                      <td className="py-2.5 pr-4">
-                        {c.interview_status === "completed" ? (
-                          <span className="flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="w-3.5 h-3.5" /> Done</span>
-                        ) : c.interview_status === "in_progress" || c.interview_status === "awaiting_score" ? (
-                          <span className="flex items-center gap-1 text-xs text-amber-600"><Clock className="w-3.5 h-3.5" /> In progress</span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground"><AlertCircle className="w-3.5 h-3.5" /> Pending</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">{n.job_title} · {timeAgo(n.timestamp)}</p>
+                        {n.score != null && <ScoreBar score={n.score} />}
+                        {n.summary && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{n.summary}</p>}
+                        {(n.strengths ?? []).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {(n.strengths ?? []).slice(0, 3).map(s => (
+                              <span key={s} className="text-xs bg-muted px-1.5 py-0.5 rounded">{s}</span>
+                            ))}
+                          </div>
                         )}
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        {c.interview_score != null ? (
-                          <span className={cn("font-bold text-sm", c.interview_score >= 75 ? "text-green-600" : c.interview_score >= 50 ? "text-amber-600" : "text-red-500")}>
-                            {c.interview_score}
-                          </span>
-                        ) : <span className="text-muted-foreground text-xs">—</span>}
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        {c.recommendation ? (
-                          <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", REC_COLORS[c.recommendation] ?? "")}>
-                            {REC_LABEL[c.recommendation] ?? c.recommendation}
-                          </span>
-                        ) : <span className="text-muted-foreground text-xs">—</span>}
-                      </td>
-                      <td className="py-2.5">
-                        {c.email_sent ? (
-                          <span className="flex items-center gap-1 text-xs text-green-600"><Mail className="w-3.5 h-3.5" /> Sent</span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Right: Top Picks + Pending */}
+        <div className="space-y-4">
+
+          {/* Top picks */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Star className="w-4 h-4 text-amber-500" /> Top AI Picks
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {notifications.loading ? <Skeleton className="h-32" /> : topPicks.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">No "Hire" or "Strong Hire" candidates yet</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {topPicks.slice(0, 4).map(n => (
+                    <div key={n.id} className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold shrink-0">
+                        {n.candidate_name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate">{n.candidate_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{n.job_title}</p>
+                      </div>
+                      <div className={cn("text-sm font-bold tabular-nums shrink-0", n.score! >= 75 ? "text-green-600" : "text-blue-600")}>
+                        {n.score}
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pending interviews */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Bell className="w-4 h-4 text-primary" /> Awaiting Interview
+                {pending.length > 0 && <span className="text-xs text-muted-foreground font-normal">({pending.length})</span>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {notifications.loading ? <Skeleton className="h-32" /> : pending.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">No pending interviews</p>
+              ) : (
+                <div className="space-y-2">
+                  {pending.slice(0, 5).map(n => (
+                    <div key={n.id} className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0">
+                        {n.candidate_name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{n.candidate_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{n.job_title}</p>
+                      </div>
+                      {n.interview_status === "in_progress" ? (
+                        <span className="flex items-center gap-0.5 text-xs text-amber-600 shrink-0"><Clock className="w-3 h-3" /> Live</span>
+                      ) : (
+                        <span className="flex items-center gap-0.5 text-xs text-muted-foreground shrink-0"><AlertCircle className="w-3 h-3" /> Pending</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Notification config prompt */}
+          {!notifications.loading && !adminCfg?.email && !adminCfg?.sms && (
+            <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-2">
+                  <Bell className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Recruiter alerts not set up</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Add your email/phone to get notified instantly when candidates apply or score.</p>
+                    <Link href="/admin">
+                      <span className="text-xs font-medium text-amber-800 dark:text-amber-300 underline cursor-pointer mt-1 inline-flex items-center gap-0.5">
+                        Set up in Admin → Communications <ArrowRight className="w-3 h-3" />
+                      </span>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Recent Activity */}
       <Card>

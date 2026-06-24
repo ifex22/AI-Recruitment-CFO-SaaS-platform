@@ -166,39 +166,29 @@ router.get("/admin/audit-logs", async (req, res) => {
 
 import { loadCommConfig, saveCommConfig, maskKey, statusOf } from "../lib/comm-config";
 
+function buildKeysResponse(cfg: Awaited<ReturnType<typeof loadCommConfig>>) {
+  return {
+    resend_api_key: maskKey(cfg.resend_api_key),
+    from_email: cfg.from_email ?? "",
+    twilio_account_sid: maskKey(cfg.twilio_account_sid),
+    twilio_auth_token: maskKey(cfg.twilio_auth_token),
+    twilio_from: cfg.twilio_from ?? "",
+    openai_api_key: maskKey(cfg.openai_api_key),
+    admin_email: cfg.admin_email ?? "",
+    admin_phone: cfg.admin_phone ?? "",
+  };
+}
+
 router.get("/admin/communications", requireRole("admin"), async (_req, res) => {
   const cfg = await loadCommConfig();
-  const st = statusOf(cfg);
-  res.json({
-    ...st,
-    keys: {
-      resend_api_key: maskKey(cfg.resend_api_key),
-      from_email: cfg.from_email ?? "",
-      twilio_account_sid: maskKey(cfg.twilio_account_sid),
-      twilio_auth_token: maskKey(cfg.twilio_auth_token),
-      twilio_from: cfg.twilio_from ?? "",
-      openai_api_key: maskKey(cfg.openai_api_key),
-    },
-  });
+  res.json({ ...statusOf(cfg), keys: buildKeysResponse(cfg) });
 });
 
 router.post("/admin/communications/config", requireRole("admin"), async (req, res) => {
   const patch = req.body as Record<string, string>;
   await saveCommConfig(patch);
   const cfg = await loadCommConfig();
-  const st = statusOf(cfg);
-  res.json({
-    ok: true,
-    ...st,
-    keys: {
-      resend_api_key: maskKey(cfg.resend_api_key),
-      from_email: cfg.from_email ?? "",
-      twilio_account_sid: maskKey(cfg.twilio_account_sid),
-      twilio_auth_token: maskKey(cfg.twilio_auth_token),
-      twilio_from: cfg.twilio_from ?? "",
-      openai_api_key: maskKey(cfg.openai_api_key),
-    },
-  });
+  res.json({ ok: true, ...statusOf(cfg), keys: buildKeysResponse(cfg) });
 });
 
 router.post("/admin/communications/test-email", requireRole("admin"), async (req, res) => {

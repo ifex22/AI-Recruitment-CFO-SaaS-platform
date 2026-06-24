@@ -129,10 +129,38 @@ router.post("/public/apply", async (req, res) => {
 
   if (error) { res.status(500).json({ error: error.message }); return; }
 
+  // Notify candidate
   if (phone) {
     await sendSms(
       phone as string,
-      `Hi ${(full_name as string).split(" ")[0]}! Your application for ${job_title ?? "the role"} at Nexus AI was received. Complete your AI interview to get scored instantly: reply or visit the portal.`
+      `Hi ${(full_name as string).split(" ")[0]}! Your application for ${job_title ?? "the role"} at Nexus AI was received. Complete your AI interview to get scored instantly.`
+    );
+  }
+
+  // Notify admin/recruiter
+  const adminCfg = await loadCommConfig();
+  if (adminCfg.admin_email) {
+    await sendEmail(
+      adminCfg.admin_email,
+      `🆕 New application — ${full_name} for ${job_title ?? "a role"}`,
+      `<div style="font-family:sans-serif;max-width:520px;margin:auto;color:#1e293b">
+        <h2 style="color:#2563eb">New Candidate Application</h2>
+        <p><strong>${full_name}</strong> just applied for <strong>${job_title ?? "a role"}</strong>.</p>
+        <table style="border-collapse:collapse;width:100%;font-size:14px;margin:16px 0">
+          <tr><td style="padding:6px 12px 6px 0;color:#64748b">Email</td><td style="padding:6px 0"><strong>${email}</strong></td></tr>
+          <tr><td style="padding:6px 12px 6px 0;color:#64748b">Phone</td><td style="padding:6px 0">${phone ?? "—"}</td></tr>
+          <tr><td style="padding:6px 12px 6px 0;color:#64748b">Experience</td><td style="padding:6px 0">${experience_years ?? "—"} years</td></tr>
+          <tr><td style="padding:6px 12px 6px 0;color:#64748b">Expected Salary</td><td style="padding:6px 0">${expected_salary ? "$" + expected_salary : "—"}</td></tr>
+        </table>
+        <p style="color:#64748b;font-size:12px">AI interview is pending — score will appear in your dashboard once completed.</p>
+        <p style="color:#94a3b8;font-size:11px;margin-top:24px">Nexus AI Recruitment Platform</p>
+      </div>`
+    );
+  }
+  if (adminCfg.admin_phone) {
+    await sendSms(
+      adminCfg.admin_phone,
+      `🆕 New application: ${full_name} applied for ${job_title ?? "a role"} at Nexus AI. Check your dashboard for details.`
     );
   }
 
@@ -329,11 +357,44 @@ Respond ONLY with valid JSON:
   const recLabel = recommendationLabel[scoreResult.recommendation as string] ?? "Under Review 🔄";
   const strengths = (scoreResult.strengths as string[] ?? []).map(s => `<li>${s}</li>`).join("");
 
+  // Notify candidate via SMS
   if (candidate.phone) {
     const scoreEmoji = overallScore >= 75 ? "🟢" : overallScore >= 50 ? "🟡" : "🔴";
     await sendSms(
       candidate.phone as string,
       `${scoreEmoji} Hi ${(candidate.name as string ?? "").split(" ")[0]}! Your AI interview for ${jobTitle} is complete. Score: ${overallScore}/100. Our team will be in touch soon. – Nexus AI`
+    );
+  }
+
+  // Notify admin/recruiter of interview result
+  const adminCfg2 = await loadCommConfig();
+  const recEmoji: Record<string, string> = { strong_hire: "🏆 Strong Hire", hire: "✅ Hire", maybe: "🔄 Maybe", no_hire: "❌ No Hire" };
+  const adminRecLabel = recEmoji[scoreResult.recommendation as string] ?? "🔄 Under Review";
+  const scoreColor = overallScore >= 75 ? "#16a34a" : overallScore >= 50 ? "#d97706" : "#dc2626";
+  if (adminCfg2.admin_email) {
+    await sendEmail(
+      adminCfg2.admin_email,
+      `${adminRecLabel} — ${candidate.name as string} scored ${overallScore}/100 for ${jobTitle}`,
+      `<div style="font-family:sans-serif;max-width:520px;margin:auto;color:#1e293b">
+        <h2 style="color:#2563eb">AI Interview Completed</h2>
+        <p><strong>${candidate.name as string}</strong> finished their AI interview for <strong>${jobTitle}</strong>.</p>
+        <div style="background:#f1f5f9;border-radius:12px;padding:20px;margin:20px 0;text-align:center">
+          <div style="font-size:52px;font-weight:900;color:${scoreColor}">${overallScore}</div>
+          <div style="font-size:13px;color:#64748b">AI Score / 100</div>
+          <div style="margin-top:10px;font-size:18px;font-weight:700">${adminRecLabel}</div>
+        </div>
+        <p><strong>Summary:</strong> ${scoreResult.summary ?? ""}</p>
+        ${(scoreResult.strengths as string[] ?? []).length ? `<p><strong>Strengths:</strong></p><ul>${(scoreResult.strengths as string[]).map(s => `<li>${s}</li>`).join("")}</ul>` : ""}
+        <p style="color:#64748b;font-size:12px">Review this candidate in your Nexus AI Dashboard → Recruitment.</p>
+        <p style="color:#94a3b8;font-size:11px;margin-top:24px">Nexus AI Recruitment Platform</p>
+      </div>`
+    );
+  }
+  if (adminCfg2.admin_phone) {
+    const sEmoji = overallScore >= 75 ? "🏆" : overallScore >= 50 ? "✅" : "❌";
+    await sendSms(
+      adminCfg2.admin_phone,
+      `${sEmoji} Interview done: ${candidate.name as string} scored ${overallScore}/100 for ${jobTitle}. Recommendation: ${adminRecLabel}. Check your dashboard.`
     );
   }
 

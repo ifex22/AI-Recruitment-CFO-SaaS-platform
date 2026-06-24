@@ -49,10 +49,10 @@ type PlatformUser = { id: string; email: string; full_name: string; role: string
 type OrgData = { name?: string; industry?: string; size?: string; headquarters?: string; currency?: string; fiscal_year_start?: string; hiring_policy?: string };
 type AuditLog = { id: string; action: string; entity_type: string; user_name: string; details?: string; created_at: string };
 
-type CommKeys = { resend_api_key: string; from_email: string; twilio_account_sid: string; twilio_auth_token: string; twilio_from: string; openai_api_key: string };
-type CommStatus = { email: { configured: boolean; from: string; provider: string }; sms: { configured: boolean; from: string; provider: string }; ai: { configured: boolean; provider: string }; keys: CommKeys };
+type CommKeys = { resend_api_key: string; from_email: string; twilio_account_sid: string; twilio_auth_token: string; twilio_from: string; openai_api_key: string; admin_email: string; admin_phone: string };
+type CommStatus = { email: { configured: boolean; from: string; provider: string }; sms: { configured: boolean; from: string; provider: string }; ai: { configured: boolean; provider: string }; notifications: { admin_email_set: boolean; admin_phone_set: boolean }; keys: CommKeys };
 
-function emptyKeys(): CommKeys { return { resend_api_key: "", from_email: "", twilio_account_sid: "", twilio_auth_token: "", twilio_from: "", openai_api_key: "" }; }
+function emptyKeys(): CommKeys { return { resend_api_key: "", from_email: "", twilio_account_sid: "", twilio_auth_token: "", twilio_from: "", openai_api_key: "", admin_email: "", admin_phone: "" }; }
 
 function useCommConfig(token: string) {
   const [data, setData] = useState<CommStatus | null>(null);
@@ -402,6 +402,38 @@ export default function AdminPage() {
                       <label className="text-xs font-medium">OpenAI API Key</label>
                       <Input type="password" placeholder="sk-••••••••••••••••••••••••••••••••••••••••••••••••" value={keys.openai_api_key} onChange={e => setKey("openai_api_key", e.target.value)} />
                       <p className="text-xs text-muted-foreground">Leave blank to use the Replit AI integration (no key needed)</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Admin / Recruiter Notifications */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <Send className="w-4 h-4 text-primary" /> Admin &amp; Recruiter Notifications
+                      <StatusBadge ok={!!(status?.notifications.admin_email_set || status?.notifications.admin_phone_set)} />
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">Where to send alerts when a candidate applies or completes an AI interview. The recruiter/admin receives a full report with AI score and recommendation.</p>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium">Recruiter Email (receives all alerts)</label>
+                        <Input type="email" placeholder="recruiter@yourcompany.com" value={keys.admin_email} onChange={e => setKey("admin_email", e.target.value)} />
+                        <p className="text-xs text-muted-foreground">Gets emailed on new application + interview score</p>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium">Recruiter Phone (SMS alerts)</label>
+                        <Input placeholder="+15551234567" value={keys.admin_phone} onChange={e => setKey("admin_phone", e.target.value)} />
+                        <p className="text-xs text-muted-foreground">Gets SMS on new application + interview score</p>
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 text-xs text-blue-800 dark:text-blue-300">
+                      <p className="font-semibold mb-1">What the recruiter receives:</p>
+                      <ul className="space-y-0.5 list-disc list-inside">
+                        <li><strong>New application</strong> — candidate name, email, phone, experience, salary expectation</li>
+                        <li><strong>Interview scored</strong> — full AI score (0–100), recommendation (Strong Hire / Hire / Maybe / No Hire), summary, and strengths</li>
+                      </ul>
                     </div>
                   </CardContent>
                 </Card>
