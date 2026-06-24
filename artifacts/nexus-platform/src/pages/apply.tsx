@@ -55,7 +55,7 @@ export default function ApplyPage() {
           </Link>
           <div className="flex items-center gap-3">
             <Badge variant="outline" className="text-slate-300 border-slate-600 text-xs">
-              React + Node API + Supabase
+              SPA with a REST API backed by BaaS
             </Badge>
             <Link href="/login">
               <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:text-white hover:border-slate-400">
